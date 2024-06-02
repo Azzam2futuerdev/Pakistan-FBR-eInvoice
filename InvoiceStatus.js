@@ -1,6 +1,6 @@
 <div id="divStatus" style="display: none;">
     <script>        document.addEventListener('DOMContentLoaded', () => {
-            const labelText = 'eInvoice Status';
+            const labelText = 'Seq. Invoice No';
 			const vModelForm = document.getElementById('v-model-form');
 			if (vModelForm) {
 				const labels = vModelForm.querySelectorAll('label');
@@ -15,8 +15,8 @@
 								inputs.forEach(input => {input.readOnly = true;});
 							}
 							else{
-								app.CustomFields2.Strings[eInvoiceStatusFieldGuid]= '-';
-								inputs.forEach(input => {input.value = '-';});
+								app.CustomFields2.Strings[eInvoiceStatusFieldGuid]= 'N/A';
+								inputs.forEach(input => {input.value = 'N/A';});
 							}
 						}
 					}

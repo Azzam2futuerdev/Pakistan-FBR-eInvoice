@@ -2,7 +2,7 @@
     document.addEventListener('DOMContentLoaded', () => {
 		var qrCodeContent = '%%eInvoice Status%%';
 		
-		if (qrCodeContent != '-')
+		if (qrCodeContent != 'N/A')
 		{
     		var mainTable = document.querySelector('#printable-content > table');
     		if (mainTable) {
