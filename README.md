@@ -1,5 +1,6 @@
-# FBR-eInvoice
-Integrating FBR eInvoice With Manager Io Application
+#Manager Io - FBR eInvoice Integration
+
+Integrating FBR POS eInvoice With Manager Io Application
 
 ![alt text](image-1.png)
 
