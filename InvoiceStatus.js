@@ -1,5 +1,6 @@
 <div id="divStatus" style="display: none;">
-    <script>        document.addEventListener('DOMContentLoaded', () => {
+    <script>        
+		document.addEventListener('DOMContentLoaded', () => {
             const labelText = 'Seq. Invoice No';
 			const vModelForm = document.getElementById('v-model-form');
 			if (vModelForm) {
@@ -9,12 +10,10 @@
 						const formGroup = label.closest('.form-group');
 						if (formGroup) {
 							const inputs = formGroup.querySelectorAll('input');
+							inputs.forEach(input => {input.readOnly = true;});
 							const updateButton = document.querySelector('button.btn.btn-success[onclick="ajaxPost(true)"]');
-							if (updateButton) 
+							if (!updateButton) 
 							{
-								inputs.forEach(input => {input.readOnly = true;});
-							}
-							else{
 								app.CustomFields2.Strings[eInvoiceStatusFieldGuid]= 'N/A';
 								inputs.forEach(input => {input.value = 'N/A';});
 							}

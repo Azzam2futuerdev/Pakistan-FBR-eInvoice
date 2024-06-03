@@ -54,7 +54,6 @@ async function GetBusinessDetail() {
     const hrefAttributeValue = anchorElement.getAttribute('href');
     const CompanyID = hrefAttributeValue.split('?')[1];
     const url = "/business-details-form?" + CompanyID;
-    console.log(url);
 
     try {
         const response = await fetch(url);
@@ -142,12 +141,12 @@ function getJsonRequest() {
     const invoiceDate = managerInvoice.invoiceData.IssueDate ? new Date(managerInvoice.invoiceData.IssueDate) : null;
 
     let sellerNTNCNIC = '';
-    let sellerBusinessName = ''; // Fixed spelling
+    let sellerBusinessName = '';
     let sellerProvince = '';
     let buyerNTNCNIC = '';
-    let buyerBusinessName = ''; // Fixed spelling
+    let buyerBusinessName = '';
     let buyerProvince = '';
-    let businessDestinationAddress = ''; // Fixed spelling
+    let businessDestinationAddress = '';
     let distributorNTNCNIC = '';
     let distributorName = '';
 
@@ -351,7 +350,6 @@ async function getInvoiceDetail(reportingResultstring) {
         apiResponseTextarea.value = `Status Code: ${response.status}\n\nResponse Content:\n\n${JSON.stringify(responseBody, null, 2)}`;
 
     } catch (error) {
-        // Catching "failed to fetch" specifically
         if (error.message === 'Failed to fetch') {
             apiResponseTextarea.value = `Network error: Failed to fetch the resource. This might be due to CORS policy restrictions.`;
         } else {
@@ -388,7 +386,6 @@ async function sendToFbrServer() {
         });
 
         if (!response.ok) {
-            console.error('Response Error:', response.statusText);
             apiResponseTextarea.value = `Status Code: ${response.status}\n\nResponse Content:\n\n${response.statusText}`;
             return;
         }
@@ -411,7 +408,6 @@ async function sendToFbrServer() {
                 });
         }
     } catch (error) {
-        console.error('Network Error:', error);
         apiResponseTextarea.value = `Network error: ${error}`;
     }
 }
@@ -564,20 +560,17 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                     try {
                         
                         businessDetail = await GetBusinessDetail();
-                        //console.log("businessDetail :", businessDetail);
-                        
+
                         const scriptElements = document.querySelectorAll('#nonBatchView script');
                         scriptElements.forEach(scriptElement => {
                             const scriptContent = scriptElement.textContent.trim();
                             if (scriptContent.includes('app = new Vue')) {
                                 managerInvoice = GetManagerInvoice(scriptContent);
-                                //console.log("managerInvoice :", managerInvoice);
                             }
                         });
 
                         jsonRequest = getJsonRequest();
-                        console.log("jsonRequest :", jsonRequest);
-                        
+
                         const vModelFormDiv = document.getElementById('v-model-form');
                         const button = document.createElement('button');
                         
