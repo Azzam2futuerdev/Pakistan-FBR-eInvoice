@@ -1,4 +1,6 @@
-const bposid = "914454"; // need more info about bposid
+// set all constant 
+
+const bposid = "900009";
 const token = "906b1cd8-0d10-3a91-8234-8ec88e376bd7";
 const apiPathgetInvoice = 'https://esp.fbr.gov.pk:8244/DigitalInvoicing/v1/GetInvoiceDetails';
 const apiPathsendInvoice = 'https://esp.fbr.gov.pk:8244/DigitalInvoicing/v1/PostInvoiceData_v1';
@@ -22,11 +24,13 @@ const eInvoiceStatusFieldGuid = "5400ed3d-f6e3-46e8-8e2e-ad3de55b54c4";
 const distributorNTNCNICFieldGuid = "fe865ce6-f2d3-4e6e-9be0-9375bda56ea2";
 const distributorNameFieldGuid = "61ea7429-10bc-467b-8177-f62e8f23775f";
 
+//-----------------------------------------------------------------------------
+
 const currentUrl = window.location.href;
 
 let jsonRequest = null;
 let businessDetail = null;
-let invoiceDetail = null;
+let managerInvoice = null;
 
 function loadResource(url, type) {
     return new Promise((resolve, reject) => {
@@ -78,7 +82,7 @@ async function GetBusinessDetail() {
     }
 }
 
-function GetInvoiceDetail(scriptContent) {
+function GetManagerInvoice(scriptContent) {
     const baseCurrencyMatch = scriptContent.match(/const baseCurrency = (\{.*?\});/s);
     const foreignCurrenciesMatch = scriptContent.match(/const foreignCurrencies = (\{.*?\});/s);
     const decimalSeparatorMatch = scriptContent.match(/const decimalSeparator = '([^']+)';/);
@@ -130,66 +134,55 @@ function GetInvoiceDetail(scriptContent) {
 }
 
 function getJsonRequest() {
-    if (!businessDetail || !invoiceDetail) {
+    if (!businessDetail || !managerInvoice) {
         return null;
     }
-    
-    const invoiceType = invoiceDetail.invoiceType;
-    const invoiceDate = invoiceDetail.invoiceData.IssueDate ? new Date(invoiceDetail.invoiceData.IssueDate) : null;
-    //const formattedInvoiceDate = invoiceDate ? `${String(invoiceDate.getDate()).padStart(2, '0')}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}-${invoiceDate.getFullYear()} ${String(invoiceDate.getHours()).padStart(2, '0')}:${String(invoiceDate.getMinutes()).padStart(2, '0')}:${String(invoiceDate.getSeconds()).padStart(2, '0')}` : 'N/A';
+
+    const invoiceType = managerInvoice.invoiceType;
+    const invoiceDate = managerInvoice.invoiceData.IssueDate ? new Date(managerInvoice.invoiceData.IssueDate) : null;
 
     let sellerNTNCNIC = '';
-    let sellerBussinessName = '';
+    let sellerBusinessName = ''; // Fixed spelling
     let sellerProvince = '';
     let buyerNTNCNIC = '';
-    let buyerBussinessName = '';
+    let buyerBusinessName = ''; // Fixed spelling
     let buyerProvince = '';
-    let bussinessDestinationAddress = '';
+    let businessDestinationAddress = ''; // Fixed spelling
     let distributorNTNCNIC = '';
     let distributorName = '';
 
     const getFieldValue = (obj, field) => obj?.CustomFields2?.Strings?.[field] || '';
 
     if (invoiceType == 1 || invoiceType == 3) { 
-        sellerNTNCNIC = invoiceDetail.PartyNTNCNIC;
-        sellerBussinessName = invoiceDetail.PartyName;
-        sellerProvince = invoiceDetail.PartyProvince;
-
-        //distributorNTNCNIC = invoiceDetail.PartyNTNCNIC;
-        //distributorName = invoiceDetail.PartyName;
+        sellerNTNCNIC = managerInvoice.PartyNTNCNIC;
+        sellerBusinessName = managerInvoice.PartyName;
+        sellerProvince = managerInvoice.PartyProvince;
 
         buyerNTNCNIC = getFieldValue(businessDetail, ntnFieldGuid);
-        buyerBussinessName = businessDetail.Name;
+        buyerBusinessName = businessDetail.Name;
         buyerProvince = getFieldValue(businessDetail, provinceFieldGuid);
-        bussinessDestinationAddress = businessDetail.Address;
+        businessDestinationAddress = businessDetail.Address;
     } else {
         sellerNTNCNIC = getFieldValue(businessDetail, ntnFieldGuid);
-        sellerBussinessName = businessDetail.Name;
+        sellerBusinessName = businessDetail.Name;
         sellerProvince = getFieldValue(businessDetail, provinceFieldGuid);
 
-        //distributorNTNCNIC = businessDetail.CustomFields2.Strings[ntnFieldGuid];
-        //distributorName =  businessDetail.Name;
-
-        buyerNTNCNIC = invoiceDetail.PartyNTNCNIC;
-        buyerBussinessName = invoiceDetail.PartyName;
-        buyerProvince = invoiceDetail.PartyProvince;
-        bussinessDestinationAddress = invoiceDetail.invoiceData.BillingAddress;
+        buyerNTNCNIC = managerInvoice.PartyNTNCNIC;
+        buyerBusinessName = managerInvoice.PartyName;
+        buyerProvince = managerInvoice.PartyProvince;
+        businessDestinationAddress = managerInvoice.invoiceData.BillingAddress;
     }
 
-    const saleType = getFieldValue(invoiceDetail.invoiceData, invoiceSaleTypeFieldGuid);
+    const saleType = getFieldValue(managerInvoice.invoiceData, invoiceSaleTypeFieldGuid);
 
     let reason = '';
     let reasonRemarks = '';
     let invoiceRefNo = '';
 
     if (invoiceType == 3 || invoiceType == 4) { //debit note or credit note
-        reason = getFieldValue(invoiceDetail.invoiceData, reasonFieldGuid);
-        reasonRemarks = getFieldValue(invoiceDetail.invoiceData, reasonRemarkFieldGuid);
-        if (invoiceType == 3) {
-            invoiceRefNo = invoiceDetail.invoiceData.PurchaseInvoice.Reference;
-        } else {
-            invoiceRefNo = invoiceDetail.invoiceData.SalesInvoice.Reference;
-        }
+        reason = getFieldValue(managerInvoice.invoiceData, reasonFieldGuid);
+        reasonRemarks = getFieldValue(managerInvoice.invoiceData, reasonRemarkFieldGuid);
+        invoiceRefNo = invoiceType == 3 ? managerInvoice.invoiceData.PurchaseInvoice.Reference : managerInvoice.invoiceData.SalesInvoice.Reference;
     }
 
     let items = [];
@@ -204,64 +197,85 @@ function getJsonRequest() {
     let totalCVT = 0;
     let totalDiscount = 0;
 
-    invoiceDetail.invoiceData.Lines.forEach(line => {
-    
-    const item = {
-        hsCode: getFieldValue(line.Item, hsCodeFieldGuid),
-        productCode: line.Item.ItemCode || '',
-        productDescription: line.Item.ItemName,
-        rate: line.SalesUnitPrice.toFixed(2),
-        uoM: getFieldValue(line.Item, uoMFieldGuid),
-        quantity: line.Qty.toFixed(2),
-        valueSalesExcludingST: ((line.SalesUnitPrice * line.Qty) - line.DiscountAmount).toFixed(2), 
-        salesTaxApplicable: (((line.SalesUnitPrice * line.Qty) - line.DiscountAmount) * (line.TaxCode.Rate / 100)).toFixed(2), 
-        retailPrice: (line.Item.CustomFields2?.Decimals?.[retailPriceFieldGuid] || 0).toFixed(2), 
-        salesTaxWithheldAtSource: 0, 
-        extraTax: 0, 
-        furtherTax: 0, 
-        sroScheduleNo: "",
-        fedPayable: 0,
-        cvt: 0, 
-        withholdingIncomeTaxApplicable: 0, 
-        whit_1: 0, 
-        whit_2: 0, 
-        whit_Section_1: "",
-        whit_Section_2: "",
-        totalValues: 0, 
-        discount: line.DiscountAmount.toFixed(2), 
-        invoiceRefNo: invoiceRefNo,
-        sroItemSerialNo: getFieldValue(line.Item, itemSroFieldGuid),
-        stWhAsWhAgent: 0, 
-        purchaseType: getFieldValue(line.Item, itemPurchaseTypeFieldGuid),
-        saleType: getFieldValue(line.Item, itemSaleTypeFieldGuid)
-    };
+    managerInvoice.invoiceData.Lines.forEach(line => {
+        const taxRate = line.TaxCode?.Rate ?? 0;
+        const quantity = line.Qty ?? 0;
+        const isAmountsIncludeTax = managerInvoice.invoiceData.AmountsIncludeTax ?? false;
+        const discountAmount = line.DiscountAmount ?? 0;
+        const unitPrice = (line.SalesUnitPrice ?? 0) + (line.PurchaseUnitPrice ?? 0);
 
-    items.push(item);
+        let priceExcludeTax = 0;
+        let salesTaxApplicable = 0;
+        let valueSalesExcludingST = 0;
 
-    saleValue += parseFloat(item.valueSalesExcludingST);
-    totalSalesTaxApplicable += parseFloat(item.salesTaxApplicable);
-    totalRetailPrice += parseFloat(item.retailPrice);
-    totalSTWithheldAtSource += parseFloat(item.salesTaxWithheldAtSource);
-    totalExtraTax += parseFloat(item.extraTax);
-    totalFurtherTax += parseFloat(item.furtherTax);
-    totalFEDPayable += parseFloat(item.fedPayable);
-    totalWithholdingIncomeTaxApplicable += parseFloat(item.withholdingIncomeTaxApplicable);
-    totalCVT += parseFloat(item.cvt);
-    totalDiscount += parseFloat(item.discount);
-});
+        if (isAmountsIncludeTax && taxRate > 0) {
+             priceExcludeTax = unitPrice / (1 + taxRate / 100);
+             valueSalesExcludingST = (quantity * priceExcludeTax) - discountAmount;
+             salesTaxApplicable = valueSalesExcludingST * (taxRate / 100);
+        } else {
+             priceExcludeTax = unitPrice;
+             valueSalesExcludingST = (quantity * priceExcludeTax) - discountAmount;
+             salesTaxApplicable = valueSalesExcludingST * (taxRate == 0 ? 1 : taxRate / 100);
+        }
 
-    
+        const retailPrice = parseFloat(line.Item.CustomFields2?.Decimals?.[retailPriceFieldGuid] || 0);
+        const totalValues = valueSalesExcludingST + salesTaxApplicable;
+
+        const item = {
+            hsCode: getFieldValue(line.Item, hsCodeFieldGuid),
+            productCode: line.Item.ItemCode || '',
+            productDescription: line.Item.ItemName,
+            rate: priceExcludeTax.toFixed(2),
+            uoM: getFieldValue(line.Item, uoMFieldGuid),
+            quantity: quantity.toFixed(2),
+            valueSalesExcludingST: valueSalesExcludingST.toFixed(2), 
+            salesTaxApplicable: salesTaxApplicable.toFixed(2), // Fixed calculation
+            retailPrice: retailPrice.toFixed(2), 
+            salesTaxWithheldAtSource: 0, 
+            extraTax: 0, 
+            furtherTax: 0, 
+            sroScheduleNo: "",
+            fedPayable: 0,
+            cvt: 0, 
+            withholdingIncomeTaxApplicable: 0, 
+            whit_1: 0, 
+            whit_2: 0, 
+            whit_Section_1: "",
+            whit_Section_2: "",
+            totalValues: totalValues.toFixed(2), 
+            discount: discountAmount.toFixed(2), // Fixed variable name
+            invoiceRefNo: invoiceRefNo,
+            sroItemSerialNo: getFieldValue(line.Item, itemSroFieldGuid),
+            stWhAsWhAgent: 0, 
+            purchaseType: getFieldValue(line.Item, itemPurchaseTypeFieldGuid),
+            saleType: getFieldValue(line.Item, itemSaleTypeFieldGuid)
+        };
+
+        items.push(item);
+
+        saleValue += parseFloat(item.valueSalesExcludingST);
+        totalSalesTaxApplicable += parseFloat(item.salesTaxApplicable);
+        totalRetailPrice += parseFloat(item.retailPrice);
+        totalSTWithheldAtSource += parseFloat(item.salesTaxWithheldAtSource);
+        totalExtraTax += parseFloat(item.extraTax);
+        totalFurtherTax += parseFloat(item.furtherTax);
+        totalFEDPayable += parseFloat(item.fedPayable);
+        totalWithholdingIncomeTaxApplicable += parseFloat(item.withholdingIncomeTaxApplicable);
+        totalCVT += parseFloat(item.cvt);
+        totalDiscount += parseFloat(item.discount);
+    });
+
     const jsonRequest = {
         bposid: String(bposid).padStart(6, '0'),
         invoiceType: invoiceType,
         invoiceDate: invoiceDate,
         sellerNTNCNIC: sellerNTNCNIC,
-        sellerBussinessName: sellerBussinessName,
+        sellerBussinessName: sellerBusinessName,
         sellerProvince: sellerProvince,
         buyerNTNCNIC: buyerNTNCNIC,
-        buyerBussinessName: buyerBussinessName,
+        buyerBussinessName: buyerBusinessName,
         buyerProvince: buyerProvince,
-        bussinessDestinationAddress: bussinessDestinationAddress,
+        bussinessDestinationAddress: businessDestinationAddress,
         saleType: saleType,
         saleValue: saleValue,
         totalSalesTaxApplicable: totalSalesTaxApplicable,
@@ -285,6 +299,7 @@ function getJsonRequest() {
 }
 
 
+
 function confirmAction() {
     let actionTitle = 'eInvoice Reporting';
 
@@ -304,15 +319,15 @@ function confirmAction() {
     });
 }
 
-async function getFbrInvoice( reportingResultstring) {
+async function getInvoiceDetail(reportingResultstring) {
     const apiResponseTextarea = document.getElementById('json-response');
+
     if (!reportingResultstring) {
-        apiResponseTextarea.value = `Json Request is null or undefined.`;
+        apiResponseTextarea.value = 'Json Request is null or undefined.';
         return;
-    }else{
-        var stringRequest = '{"invoiceRefNo": "' + reportingResultstring + '"}';
     }
 
+    const stringRequest = JSON.stringify({ invoiceNumber: reportingResultstring });
     apiResponseTextarea.value = '';
 
     try {
@@ -322,24 +337,31 @@ async function getFbrInvoice( reportingResultstring) {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json; charset=UTF-8'
             },
-                body: JSON.stringify(stringRequest)
+            body: stringRequest
         });
 
         if (!response.ok) {
+            const errorMessage = `Status Code: ${response.status}\n\nResponse Content:\n\n${response.statusText}`;
             console.error('Response Error:', response.statusText);
-            apiResponseTextarea.value = `Status Code: ${response.status}\n\nResponse Content:\n\n${response.statusText}`;
+            apiResponseTextarea.value = errorMessage;
             return;
         }
 
         const responseBody = await response.json();
-
         apiResponseTextarea.value = `Status Code: ${response.status}\n\nResponse Content:\n\n${JSON.stringify(responseBody, null, 2)}`;
 
     } catch (error) {
-        console.error('Network Error:', error);
-        apiResponseTextarea.value = `Network error: ${error}`;
+        // Catching "failed to fetch" specifically
+        if (error.message === 'Failed to fetch') {
+            apiResponseTextarea.value = `Network error: Failed to fetch the resource. This might be due to CORS policy restrictions.`;
+        } else {
+            console.error('Network Error:', error);
+            apiResponseTextarea.value = `Network error: ${error.message}`;
+        }
     }
 }
+
+
 
 async function sendToFbrServer() {
     const apiResponseTextarea = document.getElementById('json-response');
@@ -395,13 +417,13 @@ async function sendToFbrServer() {
 }
 
 function openPopupForm() {
-    if (!invoiceDetail || !invoiceDetail.invoiceData) {
+    if (!managerInvoice || !managerInvoice.invoiceData) {
         console.error('invoiceDetail or invoiceDetail.invoiceData is not defined');
         return;
     }
 
-    const reportingResult = invoiceDetail.invoiceData.CustomFields2 && invoiceDetail.invoiceData.CustomFields2.Strings
-        ? invoiceDetail.invoiceData.CustomFields2.Strings[eInvoiceStatusFieldGuid] || "N/A"
+    const reportingResult = managerInvoice.invoiceData.CustomFields2 && managerInvoice.invoiceData.CustomFields2.Strings
+        ? managerInvoice.invoiceData.CustomFields2.Strings[eInvoiceStatusFieldGuid] || "N/A"
         : "N/A";
 
     const modalHtml = `
@@ -420,21 +442,21 @@ function openPopupForm() {
                                 <tbody>
                                     <tr>
                                         <td><strong>Invoice Id:</strong></td>
-                                        <td>${invoiceDetail.invoiceData.id || 'N/A'}</td>
+                                        <td>${managerInvoice.invoiceData.id || 'N/A'}</td>
                                         <td><strong>Reference:</strong></td>
-                                        <td>${invoiceDetail.invoiceData.Reference || 'N/A'}</td>
+                                        <td>${managerInvoice.invoiceData.Reference || 'N/A'}</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Party Name:</strong></td>
-                                        <td>${invoiceDetail.PartyName || 'N/A'}</td>
+                                        <td>${managerInvoice.PartyName || 'N/A'}</td>
                                         <td><strong>Issue Date:</strong></td>
-                                        <td>${invoiceDetail.invoiceData.IssueDate ? new Date(invoiceDetail.invoiceData.IssueDate).toISOString().split('T')[0] : 'N/A'}</td>
+                                        <td>${managerInvoice.invoiceData.IssueDate ? new Date(managerInvoice.invoiceData.IssueDate).toISOString().split('T')[0] : 'N/A'}</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Seq. Invoice No:</strong></td>
                                         <td id='reporting-result'>${reportingResult}</td>
                                         <td><strong>Invoice Type:</strong></td>
-                                        <td>${invoiceDetail.invoiceType || 'N/A'}</td>
+                                        <td>${managerInvoice.invoiceType || 'N/A'}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -463,8 +485,9 @@ function openPopupForm() {
                     
                     <div class='modal-footer' style='background-color: #f9f9f9; padding: 10px 0px; display: flex; justify-content: space-between; align-items: center;'>
                         <div style='margin-right: auto;'>
-                            <button id='get-fbr-invoice-button' class='btn btn-primary' style='background-color: #28a745; border-color: #28a745;  display: ${reportingResult && reportingResult !== "N/A" ? 'none' : 'block'}' onclick='getFbrInvoice("${reportingResult}")'>GetInvoice Details</button>    
-                            <button id='send-to-server-button' class='btn btn-primary' style='background-color: #007bff; border-color: #007bff; display: ${reportingResult && reportingResult !== "N/A" ? 'block' : 'none'}' onclick='confirmAction()'>Send to Server</button>                        </div>
+                            <button id='get-fbr-invoice-button' class='btn btn-primary' style='background-color: #28a745; border-color: #28a745;  display: ${reportingResult && reportingResult !== "N/A" ? 'none' : 'block'}' onclick='getInvoiceDetail("${reportingResult}")'>Get Invoice Details</button>    
+                            <button id='send-to-server-button' class='btn btn-primary' style='background-color: #007bff; border-color: #007bff; display: ${reportingResult && reportingResult !== "N/A" ? 'block' : 'none'}' onclick='confirmAction()'>Send to Server</button>
+                        </div>
                         <div>
                             <button class='btn btn-default' style='background-color: #6c757d; border-color: #6c757d; color: white;' onclick="document.getElementById('popup-modal').remove();">Close</button>
                         </div>
@@ -481,24 +504,24 @@ function openPopupForm() {
 
     const reportingResultElement = document.getElementById('reporting-result');
     const sendToServerButton = document.getElementById('send-to-server-button');
-    const getFbrInvoiceButton = document.getElementById('get-fbr-invoice-button');
+    const getInvoiceDetailButton = document.getElementById('get-fbr-invoice-button');
 
      if (!reportingResultElement.textContent || reportingResultElement.textContent === "N/A") {
         sendToServerButton.style.display = 'block';
-        getFbrInvoiceButton.style.display = 'none';
+        getInvoiceDetailButton.style.display = 'none';
     } else {
         sendToServerButton.style.display = 'none';
-        getFbrInvoiceButton.style.display = 'block';
+        getInvoiceDetailButton.style.display = 'block';
     }
 
     reportingResultElement.addEventListener('change', function () {
         const resultValue = this.textContent || this.innerText;
         if (!resultValue || resultValue === "N/A") {
             sendToServerButton.style.display = 'block';
-            getFbrInvoiceButton.style.display = 'none';
+            getInvoiceDetailButton.style.display = 'none';
         } else {
             sendToServerButton.style.display = 'none';
-            getFbrInvoiceButton.style.display = 'block';
+            getInvoiceDetailButton.style.display = 'block';
         }
     });
 
@@ -539,16 +562,16 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                     }
 
                     try {
-                        // Tunggu hingga GetBusinessDetail() selesai
+                        
                         businessDetail = await GetBusinessDetail();
-                        console.log("businessDetail :", businessDetail);
+                        //console.log("businessDetail :", businessDetail);
                         
                         const scriptElements = document.querySelectorAll('#nonBatchView script');
                         scriptElements.forEach(scriptElement => {
                             const scriptContent = scriptElement.textContent.trim();
                             if (scriptContent.includes('app = new Vue')) {
-                                invoiceDetail = GetInvoiceDetail(scriptContent);
-                                console.log("invoiceDetail :", invoiceDetail);
+                                managerInvoice = GetManagerInvoice(scriptContent);
+                                //console.log("managerInvoice :", managerInvoice);
                             }
                         });
 
